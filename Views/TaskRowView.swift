@@ -5,280 +5,342 @@ import SwiftData
 struct TaskRowView: View {
     let task: Task
     @Environment(\.modelContext) private var modelContext
+    @EnvironmentObject private var appState: AppState
+    
     @State private var isHovering = false
+    @State private var isExpanded = false
     @State private var editingTitle: String = ""
     @State private var editingNotes: String = ""
     @State private var editingDueDate: Date?
+    @State private var editingPriority: TaskPriority = .normal
+    
     @FocusState private var titleFieldFocused: Bool
-    @FocusState private var notesFieldFocused: Bool
-    @FocusState private var listFocused: Bool
+    @Namespace private var animation
     
-    #if os(macOS)
-    @Binding var selectedTask: Task?
-    @Binding var expandedTask: Task?
-    let isSelected: Bool
-    
-    var isExpanded: Bool {
-        expandedTask?.id == task.id
+    var isSelected: Bool {
+        appState.selectedTasks.contains(task.id)
     }
-    
-    init(task: Task, selectedTask: Binding<Task?>, expandedTask: Binding<Task?>, isSelected: Bool = false) {
-        self.task = task
-        self._selectedTask = selectedTask
-        self._expandedTask = expandedTask
-        self.isSelected = isSelected
-    }
-    #else
-    @State private var isExpanded = false
-    @State private var selectedTask: Task?
-    @State private var expandedTask: Task?
-    
-    init(task: Task) {
-        self.task = task
-    }
-    #endif
     
     var body: some View {
-        VStack(spacing: 0) {
-            // Main row with minimal padding
-            HStack(spacing: 6) {
-                // Completion button
-                Button(action: {
-                    task.toggleCompletion()
-                    try? modelContext.save()
-                }) {
-                    Image(systemName: task.isCompleted ? "checkmark.circle.fill" : "circle")
-                        .foregroundColor(task.isCompleted ? .green : .gray)
-                        .font(.system(size: 14))
-                }
-                .buttonStyle(PlainButtonStyle())
-                
-                // Task content - ultra compact
-                VStack(alignment: .leading, spacing: 0) {
-                    if isExpanded {
-                        TextField("Task title", text: $editingTitle)
-                            .textFieldStyle(.plain)
-                            .font(.system(size: 13))
-                            .focused($titleFieldFocused)
-                            .onSubmit {
-                                saveChanges()
-                                #if os(macOS)
-                                expandedTask = nil
-                                // Return focus to list
-                                listFocused = true
-                                #else
-                                isExpanded = false
-                                #endif
-                            }
-                            #if os(macOS)
-                            .onExitCommand {
-                                // Revert changes and close
-                                editingTitle = task.title
-                                editingNotes = task.notes
-                                editingDueDate = task.dueDate
-                                expandedTask = nil
-                                // Return focus to list
-                                listFocused = true
-                            }
-                            #endif
-                    } else {
-                        // Main title with inline badges
-                        HStack(spacing: 4) {
-                            Text(task.title)
-                                .strikethrough(task.isCompleted)
-                                .foregroundColor(task.isCompleted ? .secondary : .primary)
-                                .font(.system(size: 13))
-                                .lineLimit(1)
-                            
-                            // Inline badges for minimal height
-                            if task.isToday {
-                                Image(systemName: "star.fill")
-                                    .font(.system(size: 10))
-                                    .foregroundColor(.orange)
-                            }
-                            
-                            if let dueDate = task.dueDate {
-                                Text(dueDate, style: .date)
-                                    .font(.system(size: 10))
-                                    .foregroundColor(.blue)
-                            }
-                            
-                            if !task.notes.isEmpty {
-                                Image(systemName: "note.text")
-                                    .font(.system(size: 10))
-                                    .foregroundColor(.secondary)
-                            }
-                        }
-                    }
-                }
-                
-                Spacer(minLength: 2)
-                
-                // Action buttons (visible on hover on macOS)
-                #if os(macOS)
-                if isHovering && !isExpanded {
-                    HStack(spacing: 2) {
-                        Button(action: {
-                            task.isToday.toggle()
-                            try? modelContext.save()
-                        }) {
-                            Image(systemName: task.isToday ? "star.fill" : "star")
-                                .foregroundColor(task.isToday ? .orange : .gray)
-                                .font(.system(size: 12))
-                        }
-                        .buttonStyle(PlainButtonStyle())
-                        .help(task.isToday ? "Remove from Today" : "Move to Today")
-                        
-                        Menu {
-                            Button("Expand") {
-                                expandTask()
-                            }
-                            Button("Edit...") {
-                                selectedTask = task
-                            }
-                            Button("Duplicate") {
-                                duplicateTask()
-                            }
-                            Divider()
-                            Button("Delete", role: .destructive) {
-                                modelContext.delete(task)
-                                try? modelContext.save()
-                            }
-                        } label: {
-                            Image(systemName: "ellipsis.circle")
-                                .foregroundColor(.gray)
-                                .font(.system(size: 12))
-                        }
-                        .buttonStyle(PlainButtonStyle())
-                    }
-                }
-                #endif
-            }
-            .padding(.vertical, 1)
-            .padding(.horizontal, 4)
-            .focused($listFocused)
+        VStack(alignment: .leading, spacing: 0) {
+            mainRow
             
-            // Expanded content (when needed)
             if isExpanded {
-                VStack(alignment: .leading, spacing: 6) {
-                    // Notes section
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("Notes")
-                            .font(.system(size: 10))
-                            .foregroundColor(.secondary)
-                        TextEditor(text: $editingNotes)
-                            .font(.system(size: 11))
-                            .frame(minHeight: 40, maxHeight: 80)
-                            .scrollContentBackground(.hidden)
-                            .focused($notesFieldFocused)
-                            #if os(macOS)
-                            .background(Color(NSColor.controlBackgroundColor))
-                            #else
-                            .background(Color.gray.opacity(0.1))
-                            #endif
-                            .cornerRadius(3)
-                    }
-                    
-                    // Compact controls
-                    HStack(spacing: 8) {
-                        Toggle(isOn: Binding(
-                            get: { task.isToday },
-                            set: { newValue in
-                                task.isToday = newValue
-                                try? modelContext.save()
-                            }
-                        )) {
-                            Label("Today", systemImage: "star")
-                                .font(.system(size: 11))
-                        }
-                        .toggleStyle(.checkbox)
-                        
-                        if editingDueDate != nil {
-                            DatePicker("Due:", selection: Binding(
-                                get: { editingDueDate ?? Date() },
-                                set: { editingDueDate = $0 }
-                            ), displayedComponents: [.date])
-                            .font(.system(size: 11))
-                        } else {
-                            Button("Add Due Date") {
-                                editingDueDate = Date()
-                            }
-                            .font(.system(size: 11))
-                        }
-                        
-                        if editingDueDate != nil {
-                            Button("Clear") {
-                                editingDueDate = nil
-                            }
-                            .font(.system(size: 11))
-                        }
-                        
-                        Spacer()
-                        
-                        Button("Done") {
-                            saveChanges()
-                            #if os(macOS)
-                            expandedTask = nil
-                            // Return focus to list
-                            listFocused = true
-                            #else
-                            isExpanded = false
-                            #endif
-                        }
-                        .keyboardShortcut(.return, modifiers: [])
-                        .font(.system(size: 11))
-                    }
-                    
-                    Divider()
-                }
-                .padding(.horizontal, 4)
-                .padding(.bottom, 4)
+                expandedContent
+                    .transition(.asymmetric(
+                        insertion: .push(from: .top).combined(with: .opacity),
+                        removal: .push(from: .bottom).combined(with: .opacity)
+                    ))
             }
         }
-        #if os(macOS)
-        .background(
-            RoundedRectangle(cornerRadius: 3)
-                .fill(isExpanded ? Color(NSColor.controlBackgroundColor).opacity(0.5) :
-                      isSelected ? Color.accentColor.opacity(0.1) :
-                      isHovering ? Color.gray.opacity(0.05) : Color.clear)
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 3)
-                .stroke(isExpanded ? Color.accentColor.opacity(0.3) :
-                       isSelected ? Color.accentColor.opacity(0.3) : Color.clear,
-                       lineWidth: 0.5)
-        )
-        .onHover { hovering in
-            if !isExpanded {
-                isHovering = hovering
-            }
-        }
+        .background(backgroundView)
         .contentShape(Rectangle())
         .onTapGesture(count: 2) {
             if !isExpanded {
                 expandTask()
             }
         }
-        .onChange(of: isExpanded) { oldValue, newValue in
-            if !newValue && oldValue {
-                // When collapsing, return focus to list
-                listFocused = true
+        .onTapGesture {
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                if appState.selectedTasks.contains(task.id) {
+                    appState.selectedTasks.remove(task.id)
+                } else {
+                    appState.selectedTasks.insert(task.id)
+                }
             }
         }
-        #endif
+        .contextMenu {
+            contextMenuItems
+        }
     }
     
+    // MARK: - Main Row
+    private var mainRow: some View {
+        HStack(spacing: 12) {
+            // Completion button
+            Button(action: { toggleCompletion() }) {
+                Image(systemName: task.isCompleted ? "checkmark.circle.fill" : "circle")
+                    .font(.system(size: 18))
+                    .foregroundColor(task.isCompleted ? .green : .gray.opacity(0.6))
+                    .scaleEffect(task.isCompleted ? 1.1 : 1.0)
+                    .animation(.spring(response: 0.3, dampingFraction: 0.6), value: task.isCompleted)
+            }
+            .buttonStyle(PlainButtonStyle())
+            
+            // Task content
+            VStack(alignment: .leading, spacing: 4) {
+                HStack(spacing: 6) {
+                    if task.priority != .normal {
+                        Image(systemName: task.priority.icon)
+                            .font(.system(size: 12))
+                            .foregroundColor(task.priority.color)
+                    }
+                    
+                    Text(task.title)
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundColor(task.isCompleted ? .secondary : .primary)
+                        .strikethrough(task.isCompleted, color: .secondary)
+                        .lineLimit(1)
+                    
+                    if task.isToday {
+                        Image(systemName: "star.fill")
+                            .font(.system(size: 10))
+                            .foregroundColor(.orange)
+                    }
+                    
+                    Spacer()
+                }
+                
+                if !task.subtitleInfo.isEmpty {
+                    Text(task.subtitleInfo)
+                        .font(.system(size: 11))
+                        .foregroundColor(.secondary)
+                        .lineLimit(1)
+                }
+            }
+            
+            // Due date badge
+            if let formattedDate = task.formattedDueDate {
+                Text(formattedDate)
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundColor(dueDateColor)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 3)
+                    .background(dueDateColor.opacity(0.15))
+                    .cornerRadius(6)
+            }
+            
+            // Action buttons (visible on hover)
+            #if os(macOS)
+            if isHovering && !isExpanded {
+                HStack(spacing: 8) {
+                    Button(action: { toggleToday() }) {
+                        Image(systemName: task.isToday ? "star.fill" : "star")
+                            .font(.system(size: 14))
+                            .foregroundColor(task.isToday ? .orange : .gray)
+                    }
+                    .buttonStyle(PlainButtonStyle())
+                    .help(task.isToday ? "Remove from Today" : "Move to Today")
+                    
+                    Menu {
+                        menuItems
+                    } label: {
+                        Image(systemName: "ellipsis.circle")
+                            .font(.system(size: 14))
+                            .foregroundColor(.gray)
+                    }
+                    .menuStyle(BorderlessButtonMenuStyle())
+                }
+                .transition(.scale.combined(with: .opacity))
+            }
+            #endif
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
+        .onHover { hovering in
+            withAnimation(.easeInOut(duration: 0.2)) {
+                isHovering = hovering
+            }
+        }
+    }
+    
+    // MARK: - Expanded Content
+    private var expandedContent: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Divider()
+                .padding(.horizontal, 12)
+            
+            VStack(alignment: .leading, spacing: 12) {
+                // Title editing
+                TextField("Task title", text: $editingTitle)
+                    .textFieldStyle(.plain)
+                    .font(.system(size: 16, weight: .semibold))
+                    .focused($titleFieldFocused)
+                
+                // Notes editing
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("NOTES")
+                        .font(.system(size: 10, weight: .semibold))
+                        .foregroundColor(.secondary)
+                    
+                    TextEditor(text: $editingNotes)
+                        .font(.system(size: 13))
+                        .frame(minHeight: 60, maxHeight: 120)
+                        .padding(8)
+                        .background(Color.gray.opacity(0.05))
+                        .cornerRadius(8)
+                }
+                
+                // Priority selector
+                HStack(spacing: 16) {
+                    Text("PRIORITY")
+                        .font(.system(size: 10, weight: .semibold))
+                        .foregroundColor(.secondary)
+                    
+                    Picker("Priority", selection: $editingPriority) {
+                        ForEach(TaskPriority.allCases, id: \.self) { priority in
+                            Label(priority.label, systemImage: priority.icon)
+                                .tag(priority)
+                        }
+                    }
+                    .pickerStyle(SegmentedPickerStyle())
+                    .frame(maxWidth: 300)
+                }
+                
+                // Date and today toggle
+                HStack(spacing: 20) {
+                    Toggle(isOn: Binding(
+                        get: { task.isToday },
+                        set: { _ in task.toggleToday() }
+                    )) {
+                        Label("Today", systemImage: "star")
+                            .font(.system(size: 12))
+                    }
+                    .toggleStyle(.checkbox)
+                    
+                    if editingDueDate != nil {
+                        DatePicker("Due:", selection: Binding(
+                            get: { editingDueDate ?? Date() },
+                            set: { editingDueDate = $0 }
+                        ), displayedComponents: [.date, .hourAndMinute])
+                            .font(.system(size: 12))
+                        
+                        Button("Clear") {
+                            editingDueDate = nil
+                        }
+                        .font(.system(size: 11))
+                        .buttonStyle(PlainButtonStyle())
+                        .foregroundColor(.red)
+                    } else {
+                        Button("Add Due Date") {
+                            editingDueDate = Date()
+                        }
+                        .font(.system(size: 12))
+                        .buttonStyle(BorderedButtonStyle())
+                    }
+                    
+                    Spacer()
+                    
+                    HStack(spacing: 12) {
+                        Button("Cancel") {
+                            withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                                isExpanded = false
+                            }
+                        }
+                        .buttonStyle(BorderedButtonStyle())
+                        
+                        Button("Save") {
+                            saveChanges()
+                        }
+                        .buttonStyle(BorderedProminentButtonStyle())
+                        .keyboardShortcut(.return, modifiers: [])
+                    }
+                }
+            }
+            .padding(.horizontal, 12)
+            .padding(.bottom, 12)
+        }
+    }
+    
+    // MARK: - Background View
+    private var backgroundView: some View {
+        RoundedRectangle(cornerRadius: 8)
+            .fill(backgroundColor)
+            .overlay(
+                RoundedRectangle(cornerRadius: 8)
+                    .strokeBorder(borderColor, lineWidth: 1)
+            )
+            .shadow(color: .black.opacity(isExpanded ? 0.1 : 0), radius: 8, y: 2)
+    }
+    
+    private var backgroundColor: Color {
+        if isExpanded {
+            return Color(nsColor: .controlBackgroundColor)
+        } else if isSelected {
+            return Color.accentColor.opacity(0.08)
+        } else if isHovering {
+            return Color.gray.opacity(0.05)
+        }
+        return Color.clear
+    }
+    
+    private var borderColor: Color {
+        if isExpanded {
+            return Color.accentColor.opacity(0.5)
+        } else if isSelected {
+            return Color.accentColor.opacity(0.3)
+        }
+        return Color.clear
+    }
+    
+    private var dueDateColor: Color {
+        if task.isOverdue {
+            return .red
+        } else if task.isDueToday {
+            return .orange
+        } else if task.isDueTomorrow {
+            return .blue
+        }
+        return .secondary
+    }
+    
+    // MARK: - Menu Items
+    private var menuItems: some View {
+        Group {
+            Button("Edit") {
+                expandTask()
+            }
+            
+            Button("Duplicate") {
+                duplicateTask()
+            }
+            
+            Divider()
+            
+            Menu("Priority") {
+                ForEach(TaskPriority.allCases, id: \.self) { priority in
+                    Button(action: { setPriority(priority) }) {
+                        Label(priority.label, systemImage: priority.icon)
+                    }
+                }
+            }
+            
+            Divider()
+            
+            Button("Delete", role: .destructive) {
+                deleteTask()
+            }
+        }
+    }
+    
+    private var contextMenuItems: some View {
+        Group {
+            Button(task.isCompleted ? "Mark as Incomplete" : "Mark as Complete") {
+                toggleCompletion()
+            }
+            
+            Button(task.isToday ? "Remove from Today" : "Move to Today") {
+                toggleToday()
+            }
+            
+            Divider()
+            
+            menuItems
+        }
+    }
+    
+    // MARK: - Actions
     private func expandTask() {
         editingTitle = task.title
         editingNotes = task.notes
         editingDueDate = task.dueDate
-        #if os(macOS)
-        expandedTask = task
-        #else
-        isExpanded = true
-        #endif
-        // Small delay to ensure the view is ready
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+        editingPriority = task.priority
+        
+        withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
+            isExpanded = true
+        }
+        
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
             titleFieldFocused = true
         }
     }
@@ -287,21 +349,48 @@ struct TaskRowView: View {
         task.title = editingTitle
         task.notes = editingNotes
         task.dueDate = editingDueDate
+        task.priority = editingPriority
+        
         do {
             try modelContext.save()
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                isExpanded = false
+            }
         } catch {
-            print("Error saving changes: \(error)")
+            print("Error saving task: \(error)")
         }
     }
     
+    private func toggleCompletion() {
+        task.toggleCompletion()
+        try? modelContext.save()
+    }
+    
+    private func toggleToday() {
+        task.toggleToday()
+        try? modelContext.save()
+    }
+    
+    private func setPriority(_ priority: TaskPriority) {
+        task.priority = priority
+        try? modelContext.save()
+    }
+    
     private func duplicateTask() {
-        let newTask = Task(title: task.title, notes: task.notes, dueDate: task.dueDate)
+        let newTask = Task(
+            title: task.title,
+            notes: task.notes,
+            dueDate: task.dueDate,
+            priority: task.priority,
+            tags: task.tags
+        )
         newTask.isToday = task.isToday
         modelContext.insert(newTask)
-        do {
-            try modelContext.save()
-        } catch {
-            print("Error duplicating task: \(error)")
-        }
+        try? modelContext.save()
+    }
+    
+    private func deleteTask() {
+        modelContext.delete(task)
+        try? modelContext.save()
     }
 }

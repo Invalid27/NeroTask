@@ -4,33 +4,26 @@ import SwiftData
 
 struct ContentView: View {
     @Environment(\.modelContext) private var modelContext
-    @State private var searchText = ""
-    
-    #if os(macOS)
-    @State private var selectedView: SidebarItem? = .inbox
-    @State private var showingQuickEntry = false
-    @State private var selectedTask: Task?
-    #endif
+    @EnvironmentObject private var appState: AppState
+    @State private var columnVisibility = NavigationSplitViewVisibility.all
     
     var body: some View {
         #if os(macOS)
-        NavigationSplitView {
-            SidebarView(selection: $selectedView)
+        NavigationSplitView(columnVisibility: $columnVisibility) {
+            SidebarView()
+                .navigationSplitViewColumnWidth(min: 200, ideal: 240, max: 300)
         } detail: {
-            DetailView(
-                selectedView: selectedView,
-                searchText: $searchText,
-                selectedTask: $selectedTask,
-                showingQuickEntry: $showingQuickEntry
-            )
+            DetailView()
         }
         .navigationSplitViewStyle(.balanced)
-        .searchable(text: $searchText, placement: .toolbar, prompt: "Search")
-        .sheet(isPresented: $showingQuickEntry) {
+        .searchable(text: $appState.searchText, placement: .sidebar, prompt: "Search tasks...")
+        .sheet(isPresented: $appState.showingQuickEntry) {
             QuickEntryView()
+                .environmentObject(appState)
         }
-        .sheet(item: $selectedTask) { task in
+        .sheet(item: $appState.selectedTask) { task in
             TaskEditView(task: task)
+                .environmentObject(appState)
         }
         #else
         TabView {
@@ -41,14 +34,31 @@ struct ContentView: View {
             
             TodayView()
                 .tabItem {
-                    Label("Today", systemImage: "star")
+                    Label("Today", systemImage: "star.fill")
                 }
             
             UpcomingView()
                 .tabItem {
                     Label("Upcoming", systemImage: "calendar")
                 }
+            
+            CompletedView()
+                .tabItem {
+                    Label("Completed", systemImage: "checkmark.circle.fill")
+                }
+        }
+        .searchable(text: $appState.searchText, prompt: "Search tasks...")
+        .sheet(isPresented: $appState.showingQuickEntry) {
+            QuickEntryView()
+                .environmentObject(appState)
         }
         #endif
     }
+}
+
+// MARK: - Preview
+#Preview {
+    ContentView()
+        .environmentObject(AppState())
+        .modelContainer(for: Task.self, inMemory: true)
 }

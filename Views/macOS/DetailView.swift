@@ -3,37 +3,50 @@ import SwiftUI
 
 #if os(macOS)
 struct DetailView: View {
-    let selectedView: SidebarItem?
-    @Binding var searchText: String
-    @Binding var selectedTask: Task?
-    @Binding var showingQuickEntry: Bool
+    @EnvironmentObject private var appState: AppState
     
     var body: some View {
         Group {
-            switch selectedView {
+            switch appState.selectedView {
             case .inbox:
-                InboxView(searchText: searchText, selectedTask: $selectedTask)
+                InboxView()
             case .today:
-                TodayView(searchText: searchText, selectedTask: $selectedTask)
+                TodayView()
             case .upcoming:
-                UpcomingView(searchText: searchText, selectedTask: $selectedTask)
+                UpcomingView()
             case .anytime:
-                AnytimeView(searchText: searchText, selectedTask: $selectedTask)
+                AnytimeView()
             case .completed:
-                CompletedView(searchText: searchText, selectedTask: $selectedTask)
+                CompletedView()
             case .none:
-                Text("Select a view from the sidebar")
-                    .foregroundColor(.secondary)
+                EmptyDetailView()
+            default:
+                EmptyDetailView()
             }
         }
-        .toolbar {
-            ToolbarItem(placement: .primaryAction) {
-                Button(action: { showingQuickEntry = true }) {
-                    Image(systemName: "plus")
-                }
-                .keyboardShortcut("n", modifiers: .command)
-            }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Color(NSColor.controlBackgroundColor).opacity(0.3))
+    }
+}
+
+struct EmptyDetailView: View {
+    var body: some View {
+        VStack(spacing: 20) {
+            Image(systemName: "sidebar.left")
+                .font(.system(size: 48))
+                .foregroundStyle(
+                    LinearGradient(
+                        colors: [.blue.opacity(0.5), .purple.opacity(0.5)],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+            
+            Text("Select a view from the sidebar")
+                .font(.system(size: 18, weight: .medium))
+                .foregroundColor(.secondary)
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }
 #endif
