@@ -10,28 +10,15 @@ struct TodayView: View {
     }) private var todayTasks: [Task]
     
     @State private var selection: UUID?
-    @State private var expandedTask: Task?
-    
-    #if os(macOS)
-    @Binding var selectedTask: Task?
-    var searchText: String = ""
-    
-    init(searchText: String = "", selectedTask: Binding<Task?>? = nil) {
-        self.searchText = searchText
-        self._selectedTask = selectedTask ?? .constant(nil)
-    }
-    #else
-    init() {}
-    #endif
     
     var filteredTasks: [Task] {
         #if os(macOS)
-        if searchText.isEmpty {
+        if appState.searchText.isEmpty {
             return todayTasks
         }
         return todayTasks.filter {
-            $0.title.localizedCaseInsensitiveContains(searchText) ||
-            $0.notes.localizedCaseInsensitiveContains(searchText)
+            $0.title.localizedCaseInsensitiveContains(appState.searchText) ||
+            $0.notes.localizedCaseInsensitiveContains(appState.searchText)
         }
         #else
         return todayTasks
@@ -50,8 +37,8 @@ struct TodayView: View {
                 ForEach(filteredTasks) { task in
                     TaskRowView(
                         task: task,
-                        selectedTask: $selectedTask,
-                        expandedTask: $expandedTask,
+                        selectedTask: $appState.selectedTask,
+                        expandedTask: $appState.expandedTask,
                         isSelected: selection == task.id
                     )
                     .tag(task.id)

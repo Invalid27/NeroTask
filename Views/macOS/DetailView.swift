@@ -10,15 +10,15 @@ struct DetailView: View {
         ZStack {
             switch appState.selectedView {
             case .inbox:
-                InboxView(searchText: appState.searchText, selectedTask: $appState.selectedTask)
+                InboxView()
             case .today:
-                TodayView(searchText: appState.searchText, selectedTask: $appState.selectedTask)
+                TodayView()
             case .upcoming:
-                UpcomingView(searchText: appState.searchText, selectedTask: $appState.selectedTask)
+                UpcomingView()
             case .anytime:
-                AnytimeView(searchText: appState.searchText, selectedTask: $appState.selectedTask)
+                AnytimeView()
             case .completed:
-                CompletedView(searchText: appState.searchText, selectedTask: $appState.selectedTask)
+                CompletedView()
             case .none:
                 Text("Select a view from the sidebar")
                     .foregroundColor(.secondary)

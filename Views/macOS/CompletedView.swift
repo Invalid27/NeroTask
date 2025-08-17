@@ -11,22 +11,14 @@ struct CompletedView: View {
            order: .reverse) private var tasks: [Task]
     
     @State private var selection: UUID?
-    @State private var expandedTask: Task?
-    @Binding var selectedTask: Task?
-    var searchText: String = ""
-    
-    init(searchText: String = "", selectedTask: Binding<Task?>? = nil) {
-        self.searchText = searchText
-        self._selectedTask = selectedTask ?? .constant(nil)
-    }
     
     var filteredTasks: [Task] {
-        if searchText.isEmpty {
+        if appState.searchText.isEmpty {
             return tasks
         }
         return tasks.filter {
-            $0.title.localizedCaseInsensitiveContains(searchText) ||
-            $0.notes.localizedCaseInsensitiveContains(searchText)
+            $0.title.localizedCaseInsensitiveContains(appState.searchText) ||
+            $0.notes.localizedCaseInsensitiveContains(appState.searchText)
         }
     }
     
@@ -35,8 +27,8 @@ struct CompletedView: View {
             ForEach(filteredTasks) { task in
                 TaskRowView(
                     task: task,
-                    selectedTask: $selectedTask,
-                    expandedTask: $expandedTask,
+                    selectedTask: $appState.selectedTask,
+                    expandedTask: $appState.expandedTask,
                     isSelected: selection == task.id
                 )
                 .tag(task.id)
