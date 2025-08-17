@@ -5,25 +5,31 @@ import SwiftData
 struct ContentView: View {
     @Environment(\.modelContext) private var modelContext
     @EnvironmentObject private var appState: AppState
-    @State private var columnVisibility = NavigationSplitViewVisibility.all
+    
+    #if os(macOS)
+    // Using the SidebarItem from Models/SidebarItem.swift
+    @State private var selectedView: SidebarItem? = .inbox
+    #endif
     
     var body: some View {
         #if os(macOS)
-        NavigationSplitView(columnVisibility: $columnVisibility) {
-            SidebarView()
-                .navigationSplitViewColumnWidth(min: 200, ideal: 240, max: 300)
+        NavigationSplitView {
+            SidebarView(selection: $selectedView)
         } detail: {
-            DetailView()
+            DetailView(
+                selectedView: selectedView,
+                searchText: $appState.searchText,
+                selectedTask: $appState.selectedTask,
+                showingQuickEntry: $appState.showingQuickEntry
+            )
         }
         .navigationSplitViewStyle(.balanced)
-        .searchable(text: $appState.searchText, placement: .sidebar, prompt: "Search tasks...")
+        .searchable(text: $appState.searchText, placement: .toolbar, prompt: "Search")
         .sheet(isPresented: $appState.showingQuickEntry) {
             QuickEntryView()
-                .environmentObject(appState)
         }
         .sheet(item: $appState.selectedTask) { task in
             TaskEditView(task: task)
-                .environmentObject(appState)
         }
         #else
         TabView {
@@ -34,7 +40,7 @@ struct ContentView: View {
             
             TodayView()
                 .tabItem {
-                    Label("Today", systemImage: "star.fill")
+                    Label("Today", systemImage: "star")
                 }
             
             UpcomingView()
@@ -47,18 +53,10 @@ struct ContentView: View {
                     Label("Completed", systemImage: "checkmark.circle.fill")
                 }
         }
-        .searchable(text: $appState.searchText, prompt: "Search tasks...")
+        .searchable(text: $appState.searchText, prompt: "Search")
         .sheet(isPresented: $appState.showingQuickEntry) {
             QuickEntryView()
-                .environmentObject(appState)
         }
         #endif
     }
-}
-
-// MARK: - Preview
-#Preview {
-    ContentView()
-        .environmentObject(AppState())
-        .modelContainer(for: Task.self, inMemory: true)
 }

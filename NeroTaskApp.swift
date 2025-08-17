@@ -28,7 +28,6 @@ struct NeroTaskApp: App {
                 .environmentObject(appState)
                 #if os(macOS)
                 .frame(minWidth: 900, minHeight: 600)
-                .background(VisualEffectBlur())
                 #endif
         }
         .modelContainer(sharedModelContainer)
@@ -48,11 +47,13 @@ struct NeroTaskApp: App {
                     appState.markSelectedAsToday()
                 }
                 .keyboardShortcut("t", modifiers: .command)
+                .disabled(appState.selectedTasks.isEmpty)
                 
                 Button("Complete Task") {
                     appState.completeSelected()
                 }
                 .keyboardShortcut("k", modifiers: .command)
+                .disabled(appState.selectedTasks.isEmpty)
                 
                 Divider()
                 
@@ -60,6 +61,7 @@ struct NeroTaskApp: App {
                     appState.deleteSelected()
                 }
                 .keyboardShortcut(.delete, modifiers: .command)
+                .disabled(appState.selectedTasks.isEmpty)
             }
         }
         #endif
@@ -79,32 +81,19 @@ class AppState: ObservableObject {
     @Published var selectedTasks: Set<UUID> = []
     @Published var showingQuickEntry = false
     @Published var searchText = ""
-    @Published var selectedView: SidebarItem? = .inbox
+    
+    // Note: We're NOT declaring selectedView here to avoid conflicts
+    // Let each platform handle its own navigation
     
     func markSelectedAsToday() {
-        // Implementation for marking selected tasks as today
+        // Implementation will be added when we have access to model context
     }
     
     func completeSelected() {
-        // Implementation for completing selected tasks
+        // Implementation will be added when we have access to model context
     }
     
     func deleteSelected() {
-        // Implementation for deleting selected tasks
+        // Implementation will be added when we have access to model context
     }
 }
-
-// MARK: - Visual Effect Background (macOS)
-#if os(macOS)
-struct VisualEffectBlur: NSViewRepresentable {
-    func makeNSView(context: Context) -> NSVisualEffectView {
-        let view = NSVisualEffectView()
-        view.blendingMode = .behindWindow
-        view.state = .active
-        view.material = .sidebar
-        return view
-    }
-    
-    func updateNSView(_ nsView: NSVisualEffectView, context: Context) {}
-}
-#endif

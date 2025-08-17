@@ -2,7 +2,7 @@
 import SwiftUI
 
 #if os(macOS)
-enum SidebarItem: String, CaseIterable, Identifiable {
+enum SidebarItem: String, CaseIterable, Identifiable, Hashable {
     case inbox = "Inbox"
     case today = "Today"
     case upcoming = "Upcoming"
@@ -13,11 +13,11 @@ enum SidebarItem: String, CaseIterable, Identifiable {
     
     var icon: String {
         switch self {
-        case .inbox: return "tray"
-        case .today: return "star"
+        case .inbox: return "tray.fill"
+        case .today: return "star.fill"
         case .upcoming: return "calendar"
-        case .anytime: return "archivebox"
-        case .completed: return "checkmark.circle"
+        case .anytime: return "archivebox.fill"
+        case .completed: return "checkmark.circle.fill"
         }
     }
 }
