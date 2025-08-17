@@ -229,19 +229,9 @@ struct TaskRowView: View {
                 .padding(.bottom, 4)
             }
         }
-        #if os(macOS)
-        .background(
-            RoundedRectangle(cornerRadius: 3)
-                .fill(isExpanded ? Color(NSColor.controlBackgroundColor).opacity(0.5) :
-                      isSelected ? Color.accentColor.opacity(0.1) :
-                      isHovering ? Color.gray.opacity(0.05) : Color.clear)
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 3)
-                .stroke(isExpanded ? Color.accentColor.opacity(0.3) :
-                       isSelected ? Color.accentColor.opacity(0.3) : Color.clear,
-                       lineWidth: 0.5)
-        )
+        // REMOVED: The duplicate inline background/overlay styling
+        // ADDED: Use your ViewModifier instead
+        .taskRowStyling(isSelected: isSelected, isExpanded: isExpanded)
         .onHover { hovering in
             if !isExpanded {
                 isHovering = hovering
@@ -259,7 +249,6 @@ struct TaskRowView: View {
                 listFocused = true
             }
         }
-        #endif
     }
     
     private func expandTask() {

@@ -27,7 +27,7 @@ struct TaskRowStyling: ViewModifier {
             )
             .overlay(
                 RoundedRectangle(cornerRadius: 3)
-                    .stroke(borderColor, lineWidth: 0.5)
+                    .stroke(borderColor, lineWidth: borderWidth)
             )
             .onHover { hovering in
                 isHovering = hovering
@@ -39,11 +39,12 @@ struct TaskRowStyling: ViewModifier {
     private var backgroundColor: Color {
         #if os(macOS)
         if isExpanded {
-            return Color(NSColor.controlBackgroundColor).opacity(0.5)
+            return Color(NSColor.controlBackgroundColor).opacity(0.8)
         } else if isSelected {
-            return Color.accentColor.opacity(0.1)
+            // Made selection more visible
+            return Color.accentColor.opacity(0.15)
         } else if isHovering {
-            return Color.gray.opacity(0.05)
+            return Color.gray.opacity(0.08)
         }
         #endif
         return Color.clear
@@ -51,11 +52,23 @@ struct TaskRowStyling: ViewModifier {
     
     private var borderColor: Color {
         #if os(macOS)
-        if isExpanded || isSelected {
-            return Color.accentColor.opacity(0.3)
+        if isExpanded {
+            return Color.accentColor.opacity(0.4)
+        } else if isSelected {
+            // Made border more visible when selected
+            return Color.accentColor.opacity(0.5)
         }
         #endif
         return Color.clear
+    }
+    
+    private var borderWidth: CGFloat {
+        #if os(macOS)
+        if isSelected || isExpanded {
+            return 1.0  // Slightly thicker border for better visibility
+        }
+        #endif
+        return 0.5
     }
 }
 
