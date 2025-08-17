@@ -4,8 +4,9 @@ import SwiftData
 
 #if os(macOS)
 struct AnytimeView: View {
+    @Environment(\.modelContext) private var modelContext
     @Query(filter: #Predicate<Task> { task in
-        !task.isCompleted && !task.isToday && task.dueDate == nil
+        !task.isCompleted && task.dueDate == nil && !task.isToday
     }) private var tasks: [Task]
     
     @State private var selection: UUID?
@@ -58,8 +59,6 @@ struct AnytimeView: View {
     }
     
     private func deleteTasks(offsets: IndexSet) {
-        @Environment(\.modelContext) var modelContext
-        
         for index in offsets {
             modelContext.delete(filteredTasks[index])
         }

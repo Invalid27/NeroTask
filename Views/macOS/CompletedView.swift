@@ -5,9 +5,9 @@ import SwiftData
 #if os(macOS)
 struct CompletedView: View {
     @Environment(\.modelContext) private var modelContext
-    @Query(filter: #Predicate<Task> { task in
-        task.isCompleted
-    }, sort: \Task.completedDate, order: .reverse) private var tasks: [Task]
+    @Query(filter: #Predicate<Task> { $0.isCompleted },
+           sort: \Task.completedDate,
+           order: .reverse) private var tasks: [Task]
     
     @State private var selection: UUID?
     @State private var expandedTask: Task?
