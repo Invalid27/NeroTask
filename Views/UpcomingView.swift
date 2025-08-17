@@ -3,6 +3,7 @@ import SwiftUI
 import SwiftData
 
 struct UpcomingView: View {
+    @Environment(\.modelContext) private var modelContext
     @Query(filter: #Predicate<Task> { task in
         !task.isCompleted && task.dueDate != nil
     }, sort: \Task.dueDate) private var tasks: [Task]
