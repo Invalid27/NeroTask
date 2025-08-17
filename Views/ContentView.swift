@@ -4,24 +4,14 @@ import SwiftData
 
 struct ContentView: View {
     @Environment(\.modelContext) private var modelContext
-    @EnvironmentObject private var appState: AppState
-    
-    #if os(macOS)
-    // Using the SidebarItem from Models/SidebarItem.swift
-    @State private var selectedView: SidebarItem? = .inbox
-    #endif
+    @EnvironmentObject var appState: AppState
     
     var body: some View {
         #if os(macOS)
         NavigationSplitView {
-            SidebarView(selection: $selectedView)
+            SidebarView(selection: $appState.selectedView)
         } detail: {
-            DetailView(
-                selectedView: selectedView,
-                searchText: $appState.searchText,
-                selectedTask: $appState.selectedTask,
-                showingQuickEntry: $appState.showingQuickEntry
-            )
+            DetailView()  // No parameters needed - it gets AppState from environment
         }
         .navigationSplitViewStyle(.balanced)
         .searchable(text: $appState.searchText, placement: .toolbar, prompt: "Search")
@@ -47,15 +37,6 @@ struct ContentView: View {
                 .tabItem {
                     Label("Upcoming", systemImage: "calendar")
                 }
-            
-            CompletedView()
-                .tabItem {
-                    Label("Completed", systemImage: "checkmark.circle.fill")
-                }
-        }
-        .searchable(text: $appState.searchText, prompt: "Search")
-        .sheet(isPresented: $appState.showingQuickEntry) {
-            QuickEntryView()
         }
         #endif
     }

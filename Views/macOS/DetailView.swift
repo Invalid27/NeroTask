@@ -3,50 +3,34 @@ import SwiftUI
 
 #if os(macOS)
 struct DetailView: View {
-    @EnvironmentObject private var appState: AppState
+    @EnvironmentObject var appState: AppState
     
     var body: some View {
         Group {
             switch appState.selectedView {
             case .inbox:
-                InboxView()
+                InboxView(searchText: appState.searchText, selectedTask: $appState.selectedTask)
             case .today:
-                TodayView()
+                TodayView(searchText: appState.searchText, selectedTask: $appState.selectedTask)
             case .upcoming:
-                UpcomingView()
+                UpcomingView(searchText: appState.searchText, selectedTask: $appState.selectedTask)
             case .anytime:
-                AnytimeView()
+                AnytimeView(searchText: appState.searchText, selectedTask: $appState.selectedTask)
             case .completed:
-                CompletedView()
+                CompletedView(searchText: appState.searchText, selectedTask: $appState.selectedTask)
             case .none:
-                EmptyDetailView()
-            default:
-                EmptyDetailView()
+                Text("Select a view from the sidebar")
+                    .foregroundColor(.secondary)
             }
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Color(NSColor.controlBackgroundColor).opacity(0.3))
-    }
-}
-
-struct EmptyDetailView: View {
-    var body: some View {
-        VStack(spacing: 20) {
-            Image(systemName: "sidebar.left")
-                .font(.system(size: 48))
-                .foregroundStyle(
-                    LinearGradient(
-                        colors: [.blue.opacity(0.5), .purple.opacity(0.5)],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                )
-            
-            Text("Select a view from the sidebar")
-                .font(.system(size: 18, weight: .medium))
-                .foregroundColor(.secondary)
+        .toolbar {
+            ToolbarItem(placement: .primaryAction) {
+                Button(action: { appState.showingQuickEntry = true }) {
+                    Image(systemName: "plus")
+                }
+                .keyboardShortcut("n", modifiers: .command)
+            }
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }
 #endif

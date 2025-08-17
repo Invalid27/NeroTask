@@ -1,8 +1,12 @@
-//
-//  AppState.swift
-//  NeroTask
-//
-//  Created by Daniel on 8/17/25.
-//
+// Models/AppState.swift
+import SwiftUI
+import Combine
 
-import Foundation
+@MainActor
+class AppState: ObservableObject {
+    @Published var selectedView: SidebarItem? = .inbox
+    @Published var searchText: String = ""
+    @Published var selectedTask: Task?
+    @Published var showingQuickEntry: Bool = false
+    @Published var expandedTask: Task?
+}
