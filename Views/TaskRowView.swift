@@ -191,8 +191,11 @@ struct TaskRowView: View {
                         }
                         .toggleStyle(.checkbox)
                         
-                        if editingDueDate != nil {
-                            DatePicker("Due:", selection: Binding($editingDueDate, forceUnwrapping: true), displayedComponents: [.date])
+                        if let date = editingDueDate {
+                            DatePicker("Due:", selection: Binding(
+                                get: { date },
+                                set: { editingDueDate = $0 }
+                            ), displayedComponents: [.date])
                                 .font(.system(size: 11))
                         } else {
                             Button("Add Due Date") {
@@ -290,25 +293,5 @@ struct TaskRowView: View {
         newTask.isToday = task.isToday
         modelContext.insert(newTask)
         try? modelContext.save()
-    }
-}
-
-// Extension to handle optional Binding unwrapping
-extension Binding {
-    init(_ source: Binding<Value?>, forceUnwrapping defaultValue: Value) where Value: Equatable {
-        self.init(
-            get: { source.wrappedValue ?? defaultValue },
-            set: { source.wrappedValue = $0 }
-        )
-    }
-    
-    init?(_ source: Binding<Value?>) {
-        guard source.wrappedValue != nil else {
-            return nil
-        }
-        self.init(
-            get: { source.wrappedValue! },
-            set: { source.wrappedValue = $0 }
-        )
     }
 }
