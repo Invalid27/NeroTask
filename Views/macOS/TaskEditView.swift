@@ -4,13 +4,16 @@ import SwiftData
 
 #if os(macOS)
 struct TaskEditView: View {
-    let task: Task
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
+    
+    let task: Task
     @State private var title: String
     @State private var notes: String
     @State private var dueDate: Date?
     @State private var isToday: Bool
+    @State private var isCompleted: Bool
+    @FocusState private var titleFocused: Bool
     
     init(task: Task) {
         self.task = task
@@ -18,71 +21,115 @@ struct TaskEditView: View {
         self._notes = State(initialValue: task.notes)
         self._dueDate = State(initialValue: task.dueDate)
         self._isToday = State(initialValue: task.isToday)
+        self._isCompleted = State(initialValue: task.isCompleted)
     }
     
     var body: some View {
-        VStack(spacing: 0) {
-            // Title bar
+        VStack(spacing: 16) {
+            Text("Edit Task")
+                .font(.headline)
+            
+            TextField("Task title", text: $title)
+                .textFieldStyle(.roundedBorder)
+                .focused($titleFocused)
+                .onSubmit {
+                    saveTask()
+                }
+            
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Notes")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                TextEditor(text: $notes)
+                    .font(.body)
+                    .frame(minHeight: 80, maxHeight: 200)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 6)
+                            .stroke(Color.gray.opacity(0.2), lineWidth: 1)
+                    )
+            }
+            
             HStack {
-                Text("Edit Task")
-                    .font(.headline)
+                Toggle("Today", isOn: $isToday)
+                Toggle("Completed", isOn: $isCompleted)
+                
                 Spacer()
-                Button("Done") {
-                    saveChanges()
+                
+                if dueDate != nil {
+                    DatePicker("Due:", selection: Binding(
+                        get: { dueDate ?? Date() },
+                        set: { dueDate = $0 }
+                    ), displayedComponents: [.date])
+                    
+                    Button("Clear") {
+                        dueDate = nil
+                    }
+                    .font(.caption)
+                } else {
+                    Button("Add Due Date") {
+                        dueDate = Date()
+                    }
+                }
+            }
+            
+            Divider()
+            
+            HStack {
+                Button("Delete", role: .destructive) {
+                    deleteTask()
+                }
+                
+                Spacer()
+                
+                Button("Cancel") {
                     dismiss()
                 }
-                .keyboardShortcut(.return, modifiers: .command)
-                .buttonStyle(.borderedProminent)
-            }
-            .padding()
-            .background(Color(NSColor.controlBackgroundColor))
-            
-            // Content
-            Form {
-                TextField("Title", text: $title)
-                    .textFieldStyle(.roundedBorder)
+                .keyboardShortcut(.escape, modifiers: [])
                 
-                VStack(alignment: .leading) {
-                    Text("Notes")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                    TextEditor(text: $notes)
-                        .font(.body)
-                        .frame(minHeight: 100)
-                        .scrollContentBackground(.hidden)
-                        .background(Color(NSColor.controlBackgroundColor))
-                        .cornerRadius(4)
+                Button("Save") {
+                    saveTask()
                 }
-                
-                Toggle("Today", isOn: $isToday)
-                
-                HStack {
-                    if dueDate != nil {
-                        DatePicker("Due Date", selection: Binding($dueDate)!)
-                    } else {
-                        Button("Add Due Date") {
-                            dueDate = Date()
-                        }
-                    }
-                    
-                    if dueDate != nil {
-                        Button("Clear") {
-                            dueDate = nil
-                        }
-                    }
-                }
+                .keyboardShortcut(.return, modifiers: [])
+                .disabled(title.isEmpty)
             }
-            .padding()
         }
-        .frame(width: 500, height: 400)
+        .padding()
+        .frame(width: 450)
+        .onAppear {
+            titleFocused = true
+        }
     }
     
-    private func saveChanges() {
+    private func saveTask() {
+        guard !title.isEmpty else { return }
+        
         task.title = title
         task.notes = notes
         task.dueDate = dueDate
         task.isToday = isToday
-        try? modelContext.save()
+        task.isCompleted = isCompleted
+        if isCompleted && task.completedDate == nil {
+            task.completedDate = Date()
+        } else if !isCompleted {
+            task.completedDate = nil
+        }
+        
+        do {
+            try modelContext.save()
+            dismiss()
+        } catch {
+            print("Error saving task: \(error)")
+        }
+    }
+    
+    private func deleteTask() {
+        modelContext.delete(task)
+        do {
+            try modelContext.save()
+            dismiss()
+        } catch {
+            print("Error deleting task: \(error)")
+        }
     }
 }
 #endif

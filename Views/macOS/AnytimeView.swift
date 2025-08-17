@@ -5,16 +5,18 @@ import SwiftData
 #if os(macOS)
 struct AnytimeView: View {
     @Query(filter: #Predicate<Task> { task in
-        !task.isCompleted && task.dueDate == nil && !task.isToday
+        !task.isCompleted && !task.isToday && task.dueDate == nil
     }) private var tasks: [Task]
     
-    @State private var selection = Set<Task>()
-    @Binding var selectedTask: Task?
-    var searchText: String = ""
+    @State private var selection: UUID?
+    @State private var expandedTask: Task?
     
-    init(searchText: String = "", selectedTask: Binding<Task?>? = nil) {
+    var searchText: String
+    @Binding var selectedTask: Task?
+    
+    init(searchText: String = "", selectedTask: Binding<Task?>) {
         self.searchText = searchText
-        self._selectedTask = selectedTask ?? .constant(nil)
+        self._selectedTask = selectedTask
     }
     
     var filteredTasks: [Task] {
@@ -29,15 +31,43 @@ struct AnytimeView: View {
     
     var body: some View {
         List(selection: $selection) {
-            ForEach(filteredTasks) { task in
-                TaskRowView(task: task, selectedTask: $selectedTask)
+            if filteredTasks.isEmpty {
+                ContentUnavailableView(
+                    "No Anytime Tasks",
+                    systemImage: "archivebox",
+                    description: Text("Tasks without dates that aren't marked for today appear here")
+                )
+            } else {
+                ForEach(filteredTasks) { task in
+                    TaskRowView(
+                        task: task,
+                        selectedTask: $selectedTask,
+                        expandedTask: $expandedTask,
+                        isSelected: selection == task.id
+                    )
+                    .tag(task.id)
+                    .listRowInsets(EdgeInsets(top: 0, leading: 4, bottom: 0, trailing: 4))
                     .listRowSeparator(.hidden)
-                    .tag(task)
+                }
+                .onDelete(perform: deleteTasks)
             }
         }
-        .listStyle(.inset)
+        .listStyle(.inset(alternatesRowBackgrounds: false))
         .navigationTitle("Anytime")
         .navigationSubtitle("\(tasks.count) tasks")
+    }
+    
+    private func deleteTasks(offsets: IndexSet) {
+        @Environment(\.modelContext) var modelContext
+        
+        for index in offsets {
+            modelContext.delete(filteredTasks[index])
+        }
+        do {
+            try modelContext.save()
+        } catch {
+            print("Error deleting tasks: \(error)")
+        }
     }
 }
 #endif

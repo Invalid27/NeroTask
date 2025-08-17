@@ -22,14 +22,16 @@ struct TaskRowView: View {
         expandedTask?.id == task.id
     }
     
-    init(task: Task, selectedTask: Binding<Task?>? = nil, expandedTask: Binding<Task?>? = nil, isSelected: Bool = false) {
+    init(task: Task, selectedTask: Binding<Task?>, expandedTask: Binding<Task?>, isSelected: Bool = false) {
         self.task = task
-        self._selectedTask = selectedTask ?? .constant(nil)
-        self._expandedTask = expandedTask ?? .constant(nil)
+        self._selectedTask = selectedTask
+        self._expandedTask = expandedTask
         self.isSelected = isSelected
     }
     #else
     @State private var isExpanded = false
+    @State private var selectedTask: Task?
+    @State private var expandedTask: Task?
     
     init(task: Task) {
         self.task = task
@@ -140,6 +142,7 @@ struct TaskRowView: View {
                             Divider()
                             Button("Delete", role: .destructive) {
                                 modelContext.delete(task)
+                                try? modelContext.save()
                             }
                         } label: {
                             Image(systemName: "ellipsis.circle")
@@ -191,8 +194,11 @@ struct TaskRowView: View {
                         .toggleStyle(.checkbox)
                         
                         if editingDueDate != nil {
-                            DatePicker("Due:", selection: Binding($editingDueDate)!, displayedComponents: [.date])
-                                .font(.system(size: 11))
+                            DatePicker("Due:", selection: Binding(
+                                get: { editingDueDate ?? Date() },
+                                set: { editingDueDate = $0 }
+                            ), displayedComponents: [.date])
+                            .font(.system(size: 11))
                         } else {
                             Button("Add Due Date") {
                                 editingDueDate = Date()
@@ -229,9 +235,19 @@ struct TaskRowView: View {
                 .padding(.bottom, 4)
             }
         }
-        // REMOVED: The duplicate inline background/overlay styling
-        // ADDED: Use your ViewModifier instead
-        .taskRowStyling(isSelected: isSelected, isExpanded: isExpanded)
+        #if os(macOS)
+        .background(
+            RoundedRectangle(cornerRadius: 3)
+                .fill(isExpanded ? Color(NSColor.controlBackgroundColor).opacity(0.5) :
+                      isSelected ? Color.accentColor.opacity(0.1) :
+                      isHovering ? Color.gray.opacity(0.05) : Color.clear)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 3)
+                .stroke(isExpanded ? Color.accentColor.opacity(0.3) :
+                       isSelected ? Color.accentColor.opacity(0.3) : Color.clear,
+                       lineWidth: 0.5)
+        )
         .onHover { hovering in
             if !isExpanded {
                 isHovering = hovering
@@ -249,6 +265,7 @@ struct TaskRowView: View {
                 listFocused = true
             }
         }
+        #endif
     }
     
     private func expandTask() {
@@ -270,13 +287,21 @@ struct TaskRowView: View {
         task.title = editingTitle
         task.notes = editingNotes
         task.dueDate = editingDueDate
-        try? modelContext.save()
+        do {
+            try modelContext.save()
+        } catch {
+            print("Error saving changes: \(error)")
+        }
     }
     
     private func duplicateTask() {
         let newTask = Task(title: task.title, notes: task.notes, dueDate: task.dueDate)
         newTask.isToday = task.isToday
         modelContext.insert(newTask)
-        try? modelContext.save()
+        do {
+            try modelContext.save()
+        } catch {
+            print("Error duplicating task: \(error)")
+        }
     }
 }

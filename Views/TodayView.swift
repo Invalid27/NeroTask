@@ -12,19 +12,21 @@ struct TodayView: View {
     @State private var expandedTask: Task?
     
     #if os(macOS)
+    var searchText: String
     @Binding var selectedTask: Task?
-    var searchText: String = ""
     
-    init(searchText: String = "", selectedTask: Binding<Task?>? = nil) {
+    init(searchText: String = "", selectedTask: Binding<Task?>) {
         self.searchText = searchText
-        self._selectedTask = selectedTask ?? .constant(nil)
+        self._selectedTask = selectedTask
     }
     #else
+    let searchText: String = ""
+    @State private var selectedTask: Task?
+    
     init() {}
     #endif
     
     var filteredTasks: [Task] {
-        #if os(macOS)
         if searchText.isEmpty {
             return todayTasks
         }
@@ -32,9 +34,6 @@ struct TodayView: View {
             $0.title.localizedCaseInsensitiveContains(searchText) ||
             $0.notes.localizedCaseInsensitiveContains(searchText)
         }
-        #else
-        return todayTasks
-        #endif
     }
     
     var body: some View {
@@ -49,10 +48,7 @@ struct TodayView: View {
                 ForEach(filteredTasks) { task in
                     TaskRowView(
                         task: task,
-                        selectedTask: Binding(
-                            get: { selectedTask },
-                            set: { selectedTask = $0 }
-                        ),
+                        selectedTask: $selectedTask,
                         expandedTask: $expandedTask,
                         isSelected: selection == task.id
                     )
@@ -60,6 +56,7 @@ struct TodayView: View {
                     .listRowInsets(EdgeInsets(top: 0, leading: 4, bottom: 0, trailing: 4))
                     .listRowSeparator(.hidden)
                 }
+                .onDelete(perform: deleteTasks)
             }
         }
         #if os(macOS)
@@ -71,5 +68,16 @@ struct TodayView: View {
         #if os(macOS)
         .navigationSubtitle("\(todayTasks.count) tasks")
         #endif
+    }
+    
+    private func deleteTasks(offsets: IndexSet) {
+        for index in offsets {
+            modelContext.delete(filteredTasks[index])
+        }
+        do {
+            try modelContext.save()
+        } catch {
+            print("Error deleting tasks: \(error)")
+        }
     }
 }

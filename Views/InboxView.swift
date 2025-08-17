@@ -14,19 +14,21 @@ struct InboxView: View {
     @State private var expandedTask: Task?
     
     #if os(macOS)
+    var searchText: String
     @Binding var selectedTask: Task?
-    var searchText: String = ""
     
-    init(searchText: String = "", selectedTask: Binding<Task?>? = nil) {
+    init(searchText: String = "", selectedTask: Binding<Task?>) {
         self.searchText = searchText
-        self._selectedTask = selectedTask ?? .constant(nil)
+        self._selectedTask = selectedTask
     }
     #else
+    let searchText: String = ""
+    @State private var selectedTask: Task?
+    
     init() {}
     #endif
     
     var filteredTasks: [Task] {
-        #if os(macOS)
         if searchText.isEmpty {
             return tasks
         }
@@ -34,9 +36,6 @@ struct InboxView: View {
             $0.title.localizedCaseInsensitiveContains(searchText) ||
             $0.notes.localizedCaseInsensitiveContains(searchText)
         }
-        #else
-        return tasks
-        #endif
     }
     
     var body: some View {
@@ -75,10 +74,7 @@ struct InboxView: View {
                 ForEach(filteredTasks) { task in
                     TaskRowView(
                         task: task,
-                        selectedTask: Binding(
-                            get: { selectedTask },
-                            set: { selectedTask = $0 }
-                        ),
+                        selectedTask: $selectedTask,
                         expandedTask: $expandedTask,
                         isSelected: selection == task.id
                     )
@@ -117,6 +113,11 @@ struct InboxView: View {
     private func deleteTasks(offsets: IndexSet) {
         for index in offsets {
             modelContext.delete(filteredTasks[index])
+        }
+        do {
+            try modelContext.save()
+        } catch {
+            print("Error deleting tasks: \(error)")
         }
     }
 }
