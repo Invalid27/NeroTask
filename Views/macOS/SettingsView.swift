@@ -3,10 +3,6 @@ import SwiftUI
 
 #if os(macOS)
 struct SettingsView: View {
-    @AppStorage("defaultDueTime") private var defaultDueTime = Date()
-    @AppStorage("showCompletedInLists") private var showCompletedInLists = false
-    @AppStorage("confirmBeforeDelete") private var confirmBeforeDelete = true
-    
     var body: some View {
         TabView {
             GeneralSettingsView()
@@ -24,13 +20,20 @@ struct SettingsView: View {
 }
 
 struct GeneralSettingsView: View {
-    @AppStorage("defaultDueTime") private var defaultDueTime = Date()
-    @AppStorage("confirmBeforeDelete") private var confirmBeforeDelete = true
-    @AppStorage("showCompletedInLists") private var showCompletedInLists = false
+    @AppStorage("defaultDueTime") private var defaultDueTimeInterval: Double = Date().timeIntervalSinceReferenceDate
+    @AppStorage("confirmBeforeDelete") private var confirmBeforeDelete: Bool = true
+    @AppStorage("showCompletedInLists") private var showCompletedInLists: Bool = false
+    
+    private var defaultDueTime: Binding<Date> {
+        Binding(
+            get: { Date(timeIntervalSinceReferenceDate: defaultDueTimeInterval) },
+            set: { defaultDueTimeInterval = $0.timeIntervalSinceReferenceDate }
+        )
+    }
     
     var body: some View {
         Form {
-            DatePicker("Default due time:", selection: $defaultDueTime, displayedComponents: .hourAndMinute)
+            DatePicker("Default due time:", selection: defaultDueTime, displayedComponents: .hourAndMinute)
             
             Toggle("Show completed tasks in lists", isOn: $showCompletedInLists)
             
@@ -41,8 +44,8 @@ struct GeneralSettingsView: View {
 }
 
 struct AppearanceSettingsView: View {
-    @AppStorage("accentColor") private var accentColor = "blue"
-    @AppStorage("fontSize") private var fontSize = 13.0
+    @AppStorage("accentColor") private var accentColor: String = "blue"
+    @AppStorage("fontSize") private var fontSize: Double = 13.0
     
     var body: some View {
         Form {
