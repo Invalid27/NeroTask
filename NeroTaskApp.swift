@@ -6,19 +6,6 @@ import SwiftData
 struct NeroTaskApp: App {
     @StateObject private var appState = AppState()
     
-    var sharedModelContainer: ModelContainer = {
-        let schema = Schema([
-            Task.self,
-        ])
-        let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
-        
-        do {
-            return try ModelContainer(for: schema, configurations: [modelConfiguration])
-        } catch {
-            fatalError("Could not create ModelContainer: \(error)")
-        }
-    }()
-    
     var body: some Scene {
         WindowGroup {
             ContentView()
@@ -27,7 +14,7 @@ struct NeroTaskApp: App {
                 .frame(minWidth: 800, minHeight: 600)
                 #endif
         }
-        .modelContainer(sharedModelContainer)
+        .modelContainer(for: Task.self)
         #if os(macOS)
         .windowStyle(.titleBar)
         .windowToolbarStyle(.unified)
