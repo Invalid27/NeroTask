@@ -5,8 +5,9 @@ import SwiftUI
 struct DetailView: View {
     @EnvironmentObject var appState: AppState
     
+    @ViewBuilder
     var body: some View {
-        Group {
+        ZStack {
             switch appState.selectedView {
             case .inbox:
                 InboxView(searchText: appState.searchText, selectedTask: $appState.selectedTask)
